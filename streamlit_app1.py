@@ -8,9 +8,11 @@ with st.sidebar:
     st.title("Financial Analysis")
     ticker = st.text_input("Enter a stock ticker (e.g., AAPL)", "AAPL")
     period = st.selectbox("Enter a time frame", ("1D", "5D", "1M", "6M", "YTD", "1Y", "5Y"), index=2)
-    expiration_dates = []
     show_options = st.checkbox("Include Options Data", value=False)
-    button = st.button("Submit")
+    expiration_dates = []
+    option_type = st.selectbox("Select Option Type", ("Call", "Put"), index=0)
+    button = st.button("Submit for Stock Data")
+    options_button = st.button("Submit for Options Data")
 
 # Helper function to safely format numerical values
 def safe_format(value, decimal_places=2):
@@ -29,7 +31,7 @@ def format_value(value):
         return f"${value:.1f}{suffixes[suffix_index]}"
     return "N/A"
 
-# If Submit button is clicked
+# If Submit button is clicked for Stock Data
 if button:
     if not ticker.strip():
         st.error("Please provide a valid stock ticker.")
@@ -39,17 +41,6 @@ if button:
                 # Retrieve stock data
                 stock = yf.Ticker(ticker)
                 info = stock.info
-
-                # Expiration date selection for options, fetched after ticker selection
-                if show_options:
-                    expiration_dates = stock.options
-
-                    # Check if expiration dates exist
-                    if expiration_dates:
-                        expiration_date = st.selectbox("Select an expiration date", expiration_dates, key="expiration_date")
-                    else:
-                        expiration_date = None
-                        st.warning("No expiration dates found for this ticker.")
 
                 # Fetch stock history based on user-selected period
                 if period == "1D":
@@ -136,36 +127,41 @@ if button:
                 col3.dataframe(df, width=400, hide_index=True)
 
                 # Include options data if selected
-                if show_options and expiration_date:
-                    st.subheader("Options Data")
+                if show_options:
+                    expiration_dates = stock.options
 
-                    options_chain = stock.option_chain(expiration_date)
-                    
-                    # Sort options by volume in descending order
-                    call_data = options_chain.calls.sort_values(by="volume", ascending=False)
-                    put_data = options_chain.puts.sort_values(by="volume", ascending=False)
-                    
-                    # Display the highest volume option call and put in the left sidebar
-                    with st.sidebar:
-                        if not call_data.empty:
-                            highest_call = call_data.iloc[0]
-                            st.write(f"**Highest Volume Call**: {highest_call['contractSymbol']} - Volume: {highest_call['volume']}")
-                        if not put_data.empty:
-                            highest_put = put_data.iloc[0]
-                            st.write(f"**Highest Volume Put**: {highest_put['contractSymbol']} - Volume: {highest_put['volume']}")
+                    if expiration_dates:
+                        expiration_date = st.selectbox("Select an expiration date", expiration_dates, key="expiration_date")
+                    else:
+                        expiration_date = None
+                        st.warning("No expiration dates found for this ticker.")
 
-                    # Display sorted calls and puts in the main area
-                    st.write(f"**Calls for {expiration_date}**")
-                    st.dataframe(call_data[['contractSymbol', 'strike', 'lastPrice', 'volume']])
+                    # If Submit button for Options Data is clicked
+                    if options_button and expiration_date:
+                        st.subheader("Options Data")
 
-                    st.write(f"**Puts for {expiration_date}**")
-                    st.dataframe(put_data[['contractSymbol', 'strike', 'lastPrice', 'volume']])
+                        options_chain = stock.option_chain(expiration_date)
+                        
+                        if option_type == "Call":
+                            options_data = options_chain.calls.sort_values(by="volume", ascending=False)
+                        else:
+                            options_data = options_chain.puts.sort_values(by="volume", ascending=False)
+                        
+                        # Display sorted options data
+                        st.write(f"**{option_type}s for {expiration_date}**")
+                        st.dataframe(options_data[['contractSymbol', 'strike', 'lastPrice', 'volume']])
 
-                    # Calculate and display the Put/Call Ratio
-                    total_call_volume = call_data['volume'].sum() if not call_data.empty else 0
-                    total_put_volume = put_data['volume'].sum() if not put_data.empty else 0
-                    put_call_ratio = safe_format(total_put_volume / total_call_volume) if total_call_volume > 0 else "N/A"
-                    st.write(f"**Put/Call Ratio**: {put_call_ratio}")
+                        # Display the highest volume option
+                        highest_option = options_data.iloc[0]
+                        st.write(f"**Highest Volume {option_type} Option**: {highest_option['contractSymbol']} - Volume: {highest_option['volume']}")
+
+                        # Calculate and display the Put/Call Ratio (only when both calls and puts are available)
+                        if option_type == "Call":
+                            total_call_volume = options_data['volume'].sum() if not options_data.empty else 0
+                            st.write(f"Total Call Volume: {total_call_volume}")
+                        else:
+                            total_put_volume = options_data['volume'].sum() if not options_data.empty else 0
+                            st.write(f"Total Put Volume: {total_put_volume}")
 
         except Exception as e:
             st.exception(f"An error occurred: {e}")
