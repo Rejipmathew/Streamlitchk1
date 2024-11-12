@@ -134,11 +134,37 @@ if button:
                     if selected_date:
                         options_chain = stock.option_chain(selected_date)
                         
-                        st.write(f"**Calls for {selected_date}**")
-                        st.dataframe(options_chain.calls)
+                        # Display options volume and open interest
+                        call_data = options_chain.calls
+                        put_data = options_chain.puts
                         
+                        st.write(f"**Calls for {selected_date}**")
+                        st.dataframe(call_data)
+
                         st.write(f"**Puts for {selected_date}**")
-                        st.dataframe(options_chain.puts)
+                        st.dataframe(put_data)
+
+                        # Calculate and display the Put/Call Ratio
+                        call_volume = call_data['volume'].sum() if not call_data.empty else 0
+                        put_volume = put_data['volume'].sum() if not put_data.empty else 0
+                        put_call_ratio = safe_format(put_volume / call_volume) if call_volume > 0 else "N/A"
+                        st.write(f"**Put/Call Ratio**: {put_call_ratio}")
+
+                        # Display options Greeks (Delta, Theta, Vega)
+                        st.subheader("Options Greeks (for selected contracts)")
+                        call_data['delta'] = call_data['delta'].apply(safe_format)
+                        call_data['theta'] = call_data['theta'].apply(safe_format)
+                        call_data['vega'] = call_data['vega'].apply(safe_format)
+
+                        put_data['delta'] = put_data['delta'].apply(safe_format)
+                        put_data['theta'] = put_data['theta'].apply(safe_format)
+                        put_data['vega'] = put_data['vega'].apply(safe_format)
+
+                        st.write("**Calls Greeks**")
+                        st.dataframe(call_data[['strike', 'delta', 'theta', 'vega']])
+
+                        st.write("**Puts Greeks**")
+                        st.dataframe(put_data[['strike', 'delta', 'theta', 'vega']])
 
         except Exception as e:
             st.exception(f"An error occurred: {e}")
