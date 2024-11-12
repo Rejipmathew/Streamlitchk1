@@ -150,21 +150,23 @@ if button:
                         put_call_ratio = safe_format(put_volume / call_volume) if call_volume > 0 else "N/A"
                         st.write(f"**Put/Call Ratio**: {put_call_ratio}")
 
-                        # Display options Greeks (Delta, Theta, Vega)
-                        st.subheader("Options Greeks (for selected contracts)")
-                        call_data['delta'] = call_data['delta'].apply(safe_format)
-                        call_data['theta'] = call_data['theta'].apply(safe_format)
-                        call_data['vega'] = call_data['vega'].apply(safe_format)
+                        # Check if the Greeks exist before adding them to the dataframe
+                        if 'delta' in call_data.columns and 'theta' in call_data.columns and 'vega' in call_data.columns:
+                            call_data['delta'] = call_data['delta'].apply(safe_format)
+                            call_data['theta'] = call_data['theta'].apply(safe_format)
+                            call_data['vega'] = call_data['vega'].apply(safe_format)
 
-                        put_data['delta'] = put_data['delta'].apply(safe_format)
-                        put_data['theta'] = put_data['theta'].apply(safe_format)
-                        put_data['vega'] = put_data['vega'].apply(safe_format)
+                            put_data['delta'] = put_data['delta'].apply(safe_format)
+                            put_data['theta'] = put_data['theta'].apply(safe_format)
+                            put_data['vega'] = put_data['vega'].apply(safe_format)
 
-                        st.write("**Calls Greeks**")
-                        st.dataframe(call_data[['strike', 'delta', 'theta', 'vega']])
+                            st.write("**Calls Greeks**")
+                            st.dataframe(call_data[['strike', 'delta', 'theta', 'vega']])
 
-                        st.write("**Puts Greeks**")
-                        st.dataframe(put_data[['strike', 'delta', 'theta', 'vega']])
+                            st.write("**Puts Greeks**")
+                            st.dataframe(put_data[['strike', 'delta', 'theta', 'vega']])
+                        else:
+                            st.warning("Greeks (Delta, Theta, Vega) data is not available for the selected options.")
 
         except Exception as e:
             st.exception(f"An error occurred: {e}")
