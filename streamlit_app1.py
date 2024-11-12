@@ -15,7 +15,6 @@ with st.sidebar:
     # Options data selection on right sidebar if selected
     if data_type == "Options Data":
         show_options = True
-        expiration_dates = []
         option_type = st.selectbox("Select Option Type", ("Call", "Put"), index=0)
         expiration_dates = []
     else:
@@ -24,6 +23,7 @@ with st.sidebar:
     
     button = st.button("Submit for Stock Data")
     options_button = st.button("Submit for Options Data")
+    refresh_button = st.button("Refresh Option Data")
 
 # Helper function to safely format numerical values
 def safe_format(value, decimal_places=2):
