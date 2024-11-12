@@ -134,20 +134,26 @@ if button:
                     if selected_date:
                         options_chain = stock.option_chain(selected_date)
                         
-                        # Display options volume and open interest
-                        call_data = options_chain.calls
-                        put_data = options_chain.puts
+                        # Sort options by volume in descending order
+                        call_data = options_chain.calls.sort_values(by="volume", ascending=False)
+                        put_data = options_chain.puts.sort_values(by="volume", ascending=False)
                         
+                        # Display the total volume of options in the sidebar
+                        total_call_volume = call_data['volume'].sum() if not call_data.empty else 0
+                        total_put_volume = put_data['volume'].sum() if not put_data.empty else 0
+                        with st.sidebar:
+                            st.write(f"**Total Call Volume for {selected_date}: {total_call_volume}**")
+                            st.write(f"**Total Put Volume for {selected_date}: {total_put_volume}**")
+
+                        # Display sorted calls and puts in the main area
                         st.write(f"**Calls for {selected_date}**")
-                        st.dataframe(call_data)
+                        st.dataframe(call_data[['contractSymbol', 'strike', 'lastPrice', 'volume']])
 
                         st.write(f"**Puts for {selected_date}**")
-                        st.dataframe(put_data)
+                        st.dataframe(put_data[['contractSymbol', 'strike', 'lastPrice', 'volume']])
 
                         # Calculate and display the Put/Call Ratio
-                        call_volume = call_data['volume'].sum() if not call_data.empty else 0
-                        put_volume = put_data['volume'].sum() if not put_data.empty else 0
-                        put_call_ratio = safe_format(put_volume / call_volume) if call_volume > 0 else "N/A"
+                        put_call_ratio = safe_format(total_put_volume / total_call_volume) if total_call_volume > 0 else "N/A"
                         st.write(f"**Put/Call Ratio**: {put_call_ratio}")
 
                         # Check if the Greeks exist before adding them to the dataframe
