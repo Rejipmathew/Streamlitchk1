@@ -8,6 +8,7 @@ with st.sidebar:
     st.title("Financial Analysis")
     ticker = st.text_input("Enter a stock ticker (e.g., AAPL)", "AAPL")
     period = st.selectbox("Enter a time frame", ("1D", "5D", "1M", "6M", "YTD", "1Y", "5Y"), index=2)
+    expiration_dates = []
     show_options = st.checkbox("Include Options Data", value=False)
     button = st.button("Submit")
 
@@ -39,9 +40,18 @@ if button:
                 stock = yf.Ticker(ticker)
                 info = stock.info
 
-                st.subheader(f"{ticker} - {info.get('longName', 'N/A')}")
+                # Expiration date selection for options, fetched after ticker selection
+                if show_options:
+                    expiration_dates = stock.options
 
-                # Plot historical stock price data
+                    # Check if expiration dates exist
+                    if expiration_dates:
+                        expiration_date = st.selectbox("Select an expiration date", expiration_dates, key="expiration_date")
+                    else:
+                        expiration_date = None
+                        st.warning("No expiration dates found for this ticker.")
+
+                # Fetch stock history based on user-selected period
                 if period == "1D":
                     history = stock.history(period="1d", interval="1h")
                 elif period == "5D":
@@ -126,53 +136,36 @@ if button:
                 col3.dataframe(df, width=400, hide_index=True)
 
                 # Include options data if selected
-                if show_options:
+                if show_options and expiration_date:
                     st.subheader("Options Data")
-                    expiration_dates = stock.options
-                    selected_date = st.selectbox("Select an expiration date", expiration_dates)
 
-                    if selected_date:
-                        options_chain = stock.option_chain(selected_date)
-                        
-                        # Sort options by volume in descending order
-                        call_data = options_chain.calls.sort_values(by="volume", ascending=False)
-                        put_data = options_chain.puts.sort_values(by="volume", ascending=False)
-                        
-                        # Display the total volume of options in the sidebar
-                        total_call_volume = call_data['volume'].sum() if not call_data.empty else 0
-                        total_put_volume = put_data['volume'].sum() if not put_data.empty else 0
-                        with st.sidebar:
-                            st.write(f"**Total Call Volume for {selected_date}: {total_call_volume}**")
-                            st.write(f"**Total Put Volume for {selected_date}: {total_put_volume}**")
+                    options_chain = stock.option_chain(expiration_date)
+                    
+                    # Sort options by volume in descending order
+                    call_data = options_chain.calls.sort_values(by="volume", ascending=False)
+                    put_data = options_chain.puts.sort_values(by="volume", ascending=False)
+                    
+                    # Display the highest volume option call and put in the left sidebar
+                    with st.sidebar:
+                        if not call_data.empty:
+                            highest_call = call_data.iloc[0]
+                            st.write(f"**Highest Volume Call**: {highest_call['contractSymbol']} - Volume: {highest_call['volume']}")
+                        if not put_data.empty:
+                            highest_put = put_data.iloc[0]
+                            st.write(f"**Highest Volume Put**: {highest_put['contractSymbol']} - Volume: {highest_put['volume']}")
 
-                        # Display sorted calls and puts in the main area
-                        st.write(f"**Calls for {selected_date}**")
-                        st.dataframe(call_data[['contractSymbol', 'strike', 'lastPrice', 'volume']])
+                    # Display sorted calls and puts in the main area
+                    st.write(f"**Calls for {expiration_date}**")
+                    st.dataframe(call_data[['contractSymbol', 'strike', 'lastPrice', 'volume']])
 
-                        st.write(f"**Puts for {selected_date}**")
-                        st.dataframe(put_data[['contractSymbol', 'strike', 'lastPrice', 'volume']])
+                    st.write(f"**Puts for {expiration_date}**")
+                    st.dataframe(put_data[['contractSymbol', 'strike', 'lastPrice', 'volume']])
 
-                        # Calculate and display the Put/Call Ratio
-                        put_call_ratio = safe_format(total_put_volume / total_call_volume) if total_call_volume > 0 else "N/A"
-                        st.write(f"**Put/Call Ratio**: {put_call_ratio}")
-
-                        # Check if the Greeks exist before adding them to the dataframe
-                        if 'delta' in call_data.columns and 'theta' in call_data.columns and 'vega' in call_data.columns:
-                            call_data['delta'] = call_data['delta'].apply(safe_format)
-                            call_data['theta'] = call_data['theta'].apply(safe_format)
-                            call_data['vega'] = call_data['vega'].apply(safe_format)
-
-                            put_data['delta'] = put_data['delta'].apply(safe_format)
-                            put_data['theta'] = put_data['theta'].apply(safe_format)
-                            put_data['vega'] = put_data['vega'].apply(safe_format)
-
-                            st.write("**Calls Greeks**")
-                            st.dataframe(call_data[['strike', 'delta', 'theta', 'vega']])
-
-                            st.write("**Puts Greeks**")
-                            st.dataframe(put_data[['strike', 'delta', 'theta', 'vega']])
-                        else:
-                            st.warning("Greeks (Delta, Theta, Vega) data is not available for the selected options.")
+                    # Calculate and display the Put/Call Ratio
+                    total_call_volume = call_data['volume'].sum() if not call_data.empty else 0
+                    total_put_volume = put_data['volume'].sum() if not put_data.empty else 0
+                    put_call_ratio = safe_format(total_put_volume / total_call_volume) if total_call_volume > 0 else "N/A"
+                    st.write(f"**Put/Call Ratio**: {put_call_ratio}")
 
         except Exception as e:
             st.exception(f"An error occurred: {e}")
