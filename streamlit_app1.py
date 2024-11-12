@@ -6,8 +6,9 @@ import pandas as pd
 st.set_page_config(page_title="Financial Analysis", layout="wide")
 with st.sidebar:
     st.title("Financial Analysis")
-    ticker = st.text_input("Enter a stock ticker (e.g. AAPL)", "AAPL")
+    ticker = st.text_input("Enter a stock ticker (e.g., TSLA)", "TSLA")
     period = st.selectbox("Enter a time frame", ("1D", "5D", "1M", "6M", "YTD", "1Y", "5Y"), index=2)
+    show_options = st.checkbox("Include Options Data", value=False)
     button = st.button("Submit")
 
 # Format market cap and enterprise value into something readable
@@ -115,6 +116,21 @@ if button:
                 
                 df = pd.DataFrame(biz_metrics[1:], columns=biz_metrics[0])
                 col3.dataframe(df, width=400, hide_index=True)
+
+                # Include options data if selected
+                if show_options:
+                    st.subheader("Options Data")
+                    expiration_dates = stock.options
+                    selected_date = st.selectbox("Select an expiration date", expiration_dates)
+
+                    if selected_date:
+                        options_chain = stock.option_chain(selected_date)
+                        
+                        st.write(f"**Calls for {selected_date}**")
+                        st.dataframe(options_chain.calls)
+                        
+                        st.write(f"**Puts for {selected_date}**")
+                        st.dataframe(options_chain.puts)
 
         except Exception as e:
             st.exception(f"An error occurred: {e}")
