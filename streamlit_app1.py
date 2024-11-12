@@ -6,19 +6,27 @@ import pandas as pd
 st.set_page_config(page_title="Financial Analysis", layout="wide")
 with st.sidebar:
     st.title("Financial Analysis")
-    ticker = st.text_input("Enter a stock ticker (e.g., TSLA)", "TSLA")
+    ticker = st.text_input("Enter a stock ticker (e.g., AAPL)", "AAPL")
     period = st.selectbox("Enter a time frame", ("1D", "5D", "1M", "6M", "YTD", "1Y", "5Y"), index=2)
     show_options = st.checkbox("Include Options Data", value=False)
     button = st.button("Submit")
 
+# Helper function to safely format numerical values
+def safe_format(value, decimal_places=2):
+    if isinstance(value, (int, float)):
+        return f"{value:.{decimal_places}f}"
+    return "N/A"
+
 # Format market cap and enterprise value into something readable
 def format_value(value):
-    suffixes = ["", "K", "M", "B", "T"]
-    suffix_index = 0
-    while value >= 1000 and suffix_index < len(suffixes) - 1:
-        value /= 1000
-        suffix_index += 1
-    return f"${value:.1f}{suffixes[suffix_index]}"
+    if isinstance(value, (int, float)):
+        suffixes = ["", "K", "M", "B", "T"]
+        suffix_index = 0
+        while value >= 1000 and suffix_index < len(suffixes) - 1:
+            value /= 1000
+            suffix_index += 1
+        return f"${value:.1f}{suffixes[suffix_index]}"
+    return "N/A"
 
 # If Submit button is clicked
 if button:
@@ -58,8 +66,8 @@ if button:
                 country = info.get('country', 'N/A')
                 sector = info.get('sector', 'N/A')
                 industry = info.get('industry', 'N/A')
-                market_cap = info.get('marketCap', 'N/A')
-                ent_value = info.get('enterpriseValue', 'N/A')
+                market_cap = format_value(info.get('marketCap', 'N/A'))
+                ent_value = format_value(info.get('enterpriseValue', 'N/A'))
                 employees = info.get('fullTimeEmployees', 'N/A')
 
                 stock_info = [
@@ -67,8 +75,8 @@ if button:
                     ("Country", country),
                     ("Sector", sector),
                     ("Industry", industry),
-                    ("Market Cap", format_value(market_cap)),
-                    ("Enterprise Value", format_value(ent_value)),
+                    ("Market Cap", market_cap),
+                    ("Enterprise Value", ent_value),
                     ("Employees", employees)
                 ]
                 
@@ -76,42 +84,42 @@ if button:
                 col1.dataframe(df, width=400, hide_index=True)
                 
                 # Display price information as a dataframe
-                current_price = info.get('currentPrice', 'N/A')
-                prev_close = info.get('previousClose', 'N/A')
-                day_high = info.get('dayHigh', 'N/A')
-                day_low = info.get('dayLow', 'N/A')
-                ft_week_high = info.get('fiftyTwoWeekHigh', 'N/A')
-                ft_week_low = info.get('fiftyTwoWeekLow', 'N/A')
+                current_price = safe_format(info.get('currentPrice'))
+                prev_close = safe_format(info.get('previousClose'))
+                day_high = safe_format(info.get('dayHigh'))
+                day_low = safe_format(info.get('dayLow'))
+                ft_week_high = safe_format(info.get('fiftyTwoWeekHigh'))
+                ft_week_low = safe_format(info.get('fiftyTwoWeekLow'))
                 
                 price_info = [
                     ("Price Info", "Value"),
-                    ("Current Price", f"${current_price:.2f}"),
-                    ("Previous Close", f"${prev_close:.2f}"),
-                    ("Day High", f"${day_high:.2f}"),
-                    ("Day Low", f"${day_low:.2f}"),
-                    ("52 Week High", f"${ft_week_high:.2f}"),
-                    ("52 Week Low", f"${ft_week_low:.2f}")
+                    ("Current Price", f"${current_price}"),
+                    ("Previous Close", f"${prev_close}"),
+                    ("Day High", f"${day_high}"),
+                    ("Day Low", f"${day_low}"),
+                    ("52 Week High", f"${ft_week_high}"),
+                    ("52 Week Low", f"${ft_week_low}")
                 ]
                 
                 df = pd.DataFrame(price_info[1:], columns=price_info[0])
                 col2.dataframe(df, width=400, hide_index=True)
 
                 # Display business metrics as a dataframe
-                forward_eps = info.get('forwardEps', 'N/A')
-                forward_pe = info.get('forwardPE', 'N/A')
-                peg_ratio = info.get('pegRatio', 'N/A')
-                dividend_rate = info.get('dividendRate', 'N/A')
-                dividend_yield = info.get('dividendYield', 'N/A')
-                recommendation = info.get('recommendationKey', 'N/A')
+                forward_eps = safe_format(info.get('forwardEps'))
+                forward_pe = safe_format(info.get('forwardPE'))
+                peg_ratio = safe_format(info.get('pegRatio'))
+                dividend_rate = safe_format(info.get('dividendRate'))
+                dividend_yield = safe_format(info.get('dividendYield') * 100) if info.get('dividendYield') is not None else "N/A"
+                recommendation = info.get('recommendationKey', 'N/A').capitalize()
                 
                 biz_metrics = [
                     ("Business Metrics", "Value"),
-                    ("EPS (FWD)", f"{forward_eps:.2f}"),
-                    ("P/E (FWD)", f"{forward_pe:.2f}"),
-                    ("PEG Ratio", f"{peg_ratio:.2f}"),
-                    ("Div Rate (FWD)", f"${dividend_rate:.2f}"),
-                    ("Div Yield (FWD)", f"{dividend_yield * 100:.2f}%"),
-                    ("Recommendation", recommendation.capitalize())
+                    ("EPS (FWD)", forward_eps),
+                    ("P/E (FWD)", forward_pe),
+                    ("PEG Ratio", peg_ratio),
+                    ("Div Rate (FWD)", f"${dividend_rate}"),
+                    ("Div Yield (FWD)", f"{dividend_yield}%"),
+                    ("Recommendation", recommendation)
                 ]
                 
                 df = pd.DataFrame(biz_metrics[1:], columns=biz_metrics[0])
